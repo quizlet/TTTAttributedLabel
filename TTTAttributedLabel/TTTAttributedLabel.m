@@ -1339,6 +1339,10 @@ afterInheritingLabelAttributesAndConfiguringWithBlock:(NSMutableAttributedString
 }
 
 - (CGSize)intrinsicContentSize {
+    CGSize superIntrinsicContentSize = [super intrinsicContentSize];
+    if (superIntrinsicContentSize.width < 0) {
+        return superIntrinsicContentSize;
+    }
     // There's an implicit width from the original UILabel implementation
     return [self sizeThatFits:[super intrinsicContentSize]];
 }
