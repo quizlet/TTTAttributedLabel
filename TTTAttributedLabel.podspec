@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
   s.homepage     = 'https://github.com/TTTAttributedLabel/TTTAttributedLabel'
   s.platform     = :ios
   s.summary      = 'A drop-in replacement for UILabel that supports attributes, data detectors, links, and more.'
-  s.source       = { :git => 'https://github.com/TTTAttributedLabel/TTTAttributedLabel.git', :tag => s.version.to_s }
+  s.source       = { :git => 'https://github.com/quizlet/TTTAttributedLabel.git', :tag => s.version.to_s }
   s.license      = 'MIT'
   s.frameworks   = 'UIKit', 'CoreText', 'CoreGraphics', 'QuartzCore'
   s.source_files = 'TTTAttributedLabel'
