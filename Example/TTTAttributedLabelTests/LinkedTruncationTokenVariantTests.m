@@ -143,6 +143,23 @@ static NSURL *TTTVariantURL(void) {
     XCTAssertEqual(label.links.count, (NSUInteger)0);
 }
 
+- (void)testDiagnosticNormalTruncationLinks {
+    NSArray *configs = @[ @[@200, @44, @1], @[@120, @60, @0], @[@120, @60, @2], @[@300, @50, @2] ];
+    for (NSArray *config in configs) {
+        TTTAttributedLabel *label = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(0, 0, [config[0] doubleValue], [config[1] doubleValue])];
+        label.font = [UIFont systemFontOfSize:17.0];
+        label.numberOfLines = [config[2] integerValue];
+        label.attributedTruncationToken = [self tokenWithString:@"\u2026 more" link:TTTVariantURL()];
+        label.text = @"The NSString class declares the programmatic interface for an object that manages immutable strings.";
+        [self drawLabel:label times:3 context:@"diagnostic"];
+        NSMutableString *ranges = [NSMutableString string];
+        for (NSTextCheckingResult *result in label.links) {
+            [ranges appendFormat:@"{%lu,%lu} ", (unsigned long)result.range.location, (unsigned long)result.range.length];
+        }
+        NSLog(@"DIAG config=%@ numberOfLines=%ld lineBreakMode=%ld links=%lu %@", [config componentsJoinedByString:@"x"], (long)label.numberOfLines, (long)label.lineBreakMode, (unsigned long)label.links.count, ranges);
+    }
+}
+
 - (void)testLinkStillAddedWhenLineIsLongEnoughAndNotDuplicated {
     TTTAttributedLabel *label = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(0, 0, 200, 44)];
     label.font = [UIFont systemFontOfSize:17.0];
