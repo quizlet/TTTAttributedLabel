@@ -967,12 +967,28 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
 
                 CTLineDraw(truncatedLine, c);
                 
-                NSRange linkRange;
-                if ([attributedTruncationString attribute:NSLinkAttributeName atIndex:0 effectiveRange:&linkRange]) {
+                id truncationTokenLink = attributedTruncationString.length > 0 ? [attributedTruncationString attribute:NSLinkAttributeName atIndex:0 effectiveRange:NULL] : nil;
+                if (truncationTokenLink) {
                     NSRange tokenRange = [truncationString.string rangeOfString:attributedTruncationString.string];
-                    NSRange tokenLinkRange = NSMakeRange((NSUInteger)(lastLineRange.location+lastLineRange.length)-tokenRange.length, (NSUInteger)tokenRange.length);
-                    
-                    [self addLinkToURL:[attributedTruncationString attribute:NSLinkAttributeName atIndex:0 effectiveRange:&linkRange] withRange:tokenLinkRange];
+                    NSUInteger lastLineEnd = (NSUInteger)(lastLineRange.location + lastLineRange.length);
+                    // The link is applied to self.attributedText, which can differ from the drawn string, so the range must fit both.
+                    NSUInteger linkableLength = MIN(attributedString.length, self.attributedText.length);
+
+                    if (tokenRange.location != NSNotFound && tokenRange.length > 0 && tokenRange.length <= lastLineEnd && lastLineEnd <= linkableLength) {
+                        NSRange tokenLinkRange = NSMakeRange(lastLineEnd - tokenRange.length, tokenRange.length);
+
+                        BOOL isAlreadyLinked = NO;
+                        for (TTTAttributedLabelLink *link in self.linkModels) {
+                            if (NSEqualRanges(link.result.range, tokenLinkRange) && [link.result.URL isEqual:truncationTokenLink]) {
+                                isAlreadyLinked = YES;
+                                break;
+                            }
+                        }
+
+                        if (!isAlreadyLinked) {
+                            [self addLinkToURL:truncationTokenLink withRange:tokenLinkRange];
+                        }
+                    }
                 }
 
                 CFRelease(truncatedLine);

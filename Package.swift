@@ -22,7 +22,7 @@ let package = Package(
             name: "TruncationTokenCrashTests",
             dependencies: ["TTTAttributedLabel"],
             path: "Example/TTTAttributedLabelTests",
-            sources: ["LinkedTruncationTokenCrashTests.m"],
+            sources: ["LinkedTruncationTokenCrashTests.m", "LinkedTruncationTokenVariantTests.m"],
             linkerSettings: [
                 .linkedFramework("UIKit"),
                 .linkedFramework("CoreText"),
