@@ -79,7 +79,7 @@ jobs:
           xcodebuild test \
             -workspace Example/Espressos.xcworkspace \
             -scheme Espressos \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             -only-testing:TTTAttributedLabelTests/TTTAttributedLabelTests \
             IPHONEOS_DEPLOYMENT_TARGET=12.0 \
             DEAD_CODE_STRIPPING=NO \

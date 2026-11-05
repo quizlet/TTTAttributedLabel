@@ -161,8 +161,9 @@ static NSURL *TTTVariantURL(void) {
 }
 
 - (void)testLinkStillAddedWhenLineIsLongEnoughAndNotDuplicated {
-    TTTAttributedLabel *label = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(0, 0, 200, 44)];
+    TTTAttributedLabel *label = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(0, 0, 120, 60)];
     label.font = [UIFont systemFontOfSize:17.0];
+    label.numberOfLines = 2;
     NSString *token = @"\u2026 more";
     label.attributedTruncationToken = [self tokenWithString:token link:TTTVariantURL()];
     label.text = @"The NSString class declares the programmatic interface for an object that manages immutable strings.";
