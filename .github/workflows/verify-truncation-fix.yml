@@ -1,0 +1,68 @@
+name: verify-truncation-fix
+
+on:
+  push:
+    branches:
+      - cursor/fix-branch-existing-suite-1f91
+
+jobs:
+  existing-suite:
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        code: [fixed, unpatched]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Use unpatched library source
+        if: matrix.code == 'unpatched'
+        run: git checkout 425292d14dbf8e974b0a98a3bfd9ee60c2dcf873 -- TTTAttributedLabel/TTTAttributedLabel.m
+      - name: Modern Podfile
+        working-directory: Example
+        run: |
+          rm -f Podfile.lock
+          cat > Podfile <<'EOF'
+          platform :ios, '12.0'
+          project 'Espressos'
+          target 'Espressos' do
+            pod 'TTTAttributedLabel', :path => '../'
+            target 'TTTAttributedLabelTests' do
+              inherit! :search_paths
+              pod 'FBSnapshotTestCase/Core', '2.1.4'
+              pod 'Expecta', '~> 1.0'
+              pod 'OCMock', '~> 3.4'
+              pod 'KIF', '~> 3.8'
+            end
+          end
+          post_install do |installer|
+            installer.pods_project.targets.each do |t|
+              t.build_configurations.each do |c|
+                c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+              end
+            end
+          end
+          EOF
+          pod install
+          xcodebuild -list -workspace Espressos.xcworkspace
+      - name: Run existing suite
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          TEST_RUNNER_FB_REFERENCE_IMAGE_DIR="$PWD/Example/TTTAttributedLabelTests/ReferenceImages" \
+          xcodebuild test \
+            -workspace Example/Espressos.xcworkspace \
+            -scheme Espressos \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -only-testing:TTTAttributedLabelTests/TTTAttributedLabelTests \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
+            DEAD_CODE_STRIPPING=NO \
+            STRIP_INSTALLED_PRODUCT=NO \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee existing.log
+      - name: Summary
+        if: always()
+        run: |
+          grep -E "Test Case .*(passed|failed)" existing.log | sed -E "s/.*'-\[([^]]*)\]' (passed|failed).*/\2 \1/" | sort > results.txt || true
+          cat results.txt
+          grep -E "Executed|error:|BUILD FAILED|\*\* TEST" existing.log | tail -80 || true
