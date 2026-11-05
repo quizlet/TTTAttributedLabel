@@ -11,6 +11,7 @@
 		CBB8BA972A3E9E100E5BEC20 /* libPods-TTTAttributedLabelTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5661A15C6EB332A5F384694 /* libPods-TTTAttributedLabelTests.a */; };
 		E957D6671B2F9A1800090F1E /* AppTestDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E957D6661B2F9A1800090F1E /* AppTestDelegate.m */; };
 		E9B3C6EC1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m in Sources */ = {isa = PBXBuildFile; fileRef = E9B3C6EB1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m */; };
+		C0FFEE001A32C2DB00D43DF9 /* LinkedTruncationTokenCrashTests.m in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE011A32C2DB00D43DF9 /* LinkedTruncationTokenCrashTests.m */; };
 		E9B3C6F61A32C5B100D43DF9 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E9B3C6F51A32C5B100D43DF9 /* Images.xcassets */; };
 		F83BDEAA18A5C2DF003893B2 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F83BDEA918A5C2DF003893B2 /* QuartzCore.framework */; };
 		F877A36113782AF10022A8AB /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F877A36013782AF10022A8AB /* UIKit.framework */; };
@@ -48,6 +49,7 @@
 		E9B3C6E71A32C2DB00D43DF9 /* TTTAttributedLabelTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TTTAttributedLabelTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9B3C6EA1A32C2DB00D43DF9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E9B3C6EB1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TTTAttributedLabelTests.m; sourceTree = "<group>"; };
+		C0FFEE011A32C2DB00D43DF9 /* LinkedTruncationTokenCrashTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LinkedTruncationTokenCrashTests.m; sourceTree = "<group>"; };
 		E9B3C6F51A32C5B100D43DF9 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Espressos/Images.xcassets; sourceTree = "<group>"; };
 		F5661A15C6EB332A5F384694 /* libPods-TTTAttributedLabelTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TTTAttributedLabelTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F83BDEA918A5C2DF003893B2 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -112,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				E9B3C6EB1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m */,
+				C0FFEE011A32C2DB00D43DF9 /* LinkedTruncationTokenCrashTests.m */,
 				E9B3C6E91A32C2DB00D43DF9 /* Supporting Files */,
 			);
 			path = TTTAttributedLabelTests;
@@ -369,6 +372,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E9B3C6EC1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m in Sources */,
+				C0FFEE001A32C2DB00D43DF9 /* LinkedTruncationTokenCrashTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
