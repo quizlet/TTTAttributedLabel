@@ -1420,7 +1420,6 @@ afterInheritingLabelAttributesAndConfiguringWithBlock:(NSMutableAttributedString
         // need to reset so we start from the original font size.
         // See #393.
         [self setNeedsFramesetter];
-        [self setNeedsDisplay];
         
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 60000
         if ([self respondsToSelector:@selector(invalidateIntrinsicContentSize)]) {
@@ -1445,7 +1444,9 @@ afterInheritingLabelAttributesAndConfiguringWithBlock:(NSMutableAttributedString
                 scaleFactor = self.minimumScaleFactor;
             }
 
-            self.attributedText = NSAttributedStringByScalingFontSize(self.attributedText, scaleFactor);
+            // Use ivar directly so that drawing does not mark the label as needing display again
+            _attributedText = NSAttributedStringByScalingFontSize(self.attributedText, scaleFactor);
+            [self setNeedsFramesetter];
         }
     }
 
