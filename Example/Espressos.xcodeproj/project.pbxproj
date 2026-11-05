@@ -11,6 +11,7 @@
 		CBB8BA972A3E9E100E5BEC20 /* libPods-TTTAttributedLabelTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5661A15C6EB332A5F384694 /* libPods-TTTAttributedLabelTests.a */; };
 		E957D6671B2F9A1800090F1E /* AppTestDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E957D6661B2F9A1800090F1E /* AppTestDelegate.m */; };
 		A1B2C3D51A32C2DB00D43DF1 /* TruncationTokenRedrawTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D41A32C2DB00D43DF1 /* TruncationTokenRedrawTests.m */; };
+		B1C2D3E51A32C2DB00D43DF2 /* TruncationTokenProbeTests.m in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E41A32C2DB00D43DF2 /* TruncationTokenProbeTests.m */; };
 		E9B3C6EC1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m in Sources */ = {isa = PBXBuildFile; fileRef = E9B3C6EB1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m */; };
 		E9B3C6F61A32C5B100D43DF9 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E9B3C6F51A32C5B100D43DF9 /* Images.xcassets */; };
 		F83BDEAA18A5C2DF003893B2 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F83BDEA918A5C2DF003893B2 /* QuartzCore.framework */; };
@@ -49,6 +50,7 @@
 		E9B3C6E71A32C2DB00D43DF9 /* TTTAttributedLabelTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TTTAttributedLabelTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9B3C6EA1A32C2DB00D43DF9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D41A32C2DB00D43DF1 /* TruncationTokenRedrawTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TruncationTokenRedrawTests.m; sourceTree = "<group>"; };
+		B1C2D3E41A32C2DB00D43DF2 /* TruncationTokenProbeTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TruncationTokenProbeTests.m; sourceTree = "<group>"; };
 		E9B3C6EB1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TTTAttributedLabelTests.m; sourceTree = "<group>"; };
 		E9B3C6F51A32C5B100D43DF9 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Espressos/Images.xcassets; sourceTree = "<group>"; };
 		F5661A15C6EB332A5F384694 /* libPods-TTTAttributedLabelTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-TTTAttributedLabelTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -115,6 +117,7 @@
 			children = (
 				E9B3C6EB1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m */,
 				A1B2C3D41A32C2DB00D43DF1 /* TruncationTokenRedrawTests.m */,
+				B1C2D3E41A32C2DB00D43DF2 /* TruncationTokenProbeTests.m */,
 				E9B3C6E91A32C2DB00D43DF9 /* Supporting Files */,
 			);
 			path = TTTAttributedLabelTests;
@@ -373,6 +376,7 @@
 			files = (
 				E9B3C6EC1A32C2DB00D43DF9 /* TTTAttributedLabelTests.m in Sources */,
 				A1B2C3D51A32C2DB00D43DF1 /* TruncationTokenRedrawTests.m in Sources */,
+				B1C2D3E51A32C2DB00D43DF2 /* TruncationTokenProbeTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

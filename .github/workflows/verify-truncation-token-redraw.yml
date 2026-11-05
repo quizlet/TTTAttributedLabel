@@ -1,0 +1,74 @@
+name: verify-truncation-token-redraw
+
+on:
+  push:
+    branches:
+      - cursor/truncation-token-redraw-verify-3506
+
+jobs:
+  test-target:
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        code: [fixed, unpatched]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Use unpatched library source
+        if: matrix.code == 'unpatched'
+        run: git checkout 425292d14dbf8e974b0a98a3bfd9ee60c2dcf873 -- TTTAttributedLabel/TTTAttributedLabel.m
+      - name: Modern Podfile
+        working-directory: Example
+        run: |
+          rm -f Podfile.lock
+          cat > Podfile <<'EOF'
+          platform :ios, '12.0'
+          project 'Espressos'
+          target 'Espressos' do
+            pod 'TTTAttributedLabel', :path => '../'
+            target 'TTTAttributedLabelTests' do
+              inherit! :search_paths
+              pod 'FBSnapshotTestCase/Core', '2.1.4'
+              pod 'Expecta', '~> 1.0'
+              pod 'OCMock', '~> 3.4'
+              pod 'KIF', '~> 3.8'
+            end
+          end
+          post_install do |installer|
+            installer.pods_project.targets.each do |t|
+              t.build_configurations.each do |c|
+                c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+              end
+            end
+          end
+          EOF
+          pod install
+      - name: Pick simulator
+        run: |
+          xcrun simctl list devices available
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(dev['udid'] for rt in sorted(d, reverse=True) if 'iOS' in rt for dev in d[rt] if dev['name'].startswith('iPhone')))")
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+      - name: Run test target
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          FB_REFERENCE_IMAGE_DIR="$PWD/Example/TTTAttributedLabelTests/ReferenceImages" \
+          TEST_RUNNER_FB_REFERENCE_IMAGE_DIR="$PWD/Example/TTTAttributedLabelTests/ReferenceImages" \
+          xcodebuild test \
+            -workspace Example/Espressos.xcworkspace \
+            -scheme Espressos \
+            -destination "id=$SIM_UDID" \
+            -only-testing:TTTAttributedLabelTests \
+            IPHONEOS_DEPLOYMENT_TARGET=12.0 \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log
+      - name: Summary
+        if: always()
+        run: |
+          grep -E "Test Case .*(passed|failed)" test.log | sed -E "s/.*'-\[([^]]*)\]' (passed|failed).*/\2 \1/" | sort -k2 > results.txt || true
+          echo "RESULTS-BEGIN"
+          cat results.txt
+          echo "RESULTS-END"
+          grep -E "error: -\[" test.log | sed -E 's/.*error: //' | head -150 || true
+          grep -E "Executed|BUILD FAILED|\*\* TEST|xcodebuild: error" test.log | tail -20 || true
