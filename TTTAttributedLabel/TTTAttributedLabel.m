@@ -339,6 +339,7 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
 @property (readwrite, atomic, strong) NSDataDetector *dataDetector;
 @property (readwrite, nonatomic, strong) NSArray *linkModels;
 @property (readwrite, nonatomic, strong) TTTAttributedLabelLink *activeLink;
+@property (readwrite, nonatomic, strong) TTTAttributedLabelLink *truncationTokenLink;
 @property (readwrite, nonatomic, strong) NSArray *accessibilityElements;
 
 - (void) longPressGestureDidFire:(UILongPressGestureRecognizer *)sender;
@@ -711,24 +712,32 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
 - (TTTAttributedLabelLink *)linkAtPoint:(CGPoint)point {
     
     // Stop quickly if none of the points to be tested are in the bounds.
-    if (!CGRectContainsPoint(CGRectInset(self.bounds, -15.f, -15.f), point) || self.links.count == 0) {
+    if (!CGRectContainsPoint(CGRectInset(self.bounds, -15.f, -15.f), point)) {
+        return nil;
+    }
+
+    TTTAttributedLabelLink *truncationTokenLink = [self currentTruncationTokenLink];
+    if (self.links.count == 0 && !truncationTokenLink) {
         return nil;
     }
     
-    TTTAttributedLabelLink *result = [self linkAtCharacterIndex:[self characterIndexAtPoint:point]];
+    TTTAttributedLabelLink *result = [self linkAtCharacterIndex:[self characterIndexAtPoint:point] truncationTokenLink:truncationTokenLink];
     
     if (!result && self.extendsLinkTouchArea) {
-        result = [self linkAtRadius:2.5f aroundPoint:point]
-              ?: [self linkAtRadius:5.f aroundPoint:point]
-              ?: [self linkAtRadius:7.5f aroundPoint:point]
-              ?: [self linkAtRadius:12.5f aroundPoint:point]
-              ?: [self linkAtRadius:15.f aroundPoint:point];
+        result = [self linkAtRadius:2.5f aroundPoint:point truncationTokenLink:truncationTokenLink]
+              ?: [self linkAtRadius:5.f aroundPoint:point truncationTokenLink:truncationTokenLink]
+              ?: [self linkAtRadius:7.5f aroundPoint:point truncationTokenLink:truncationTokenLink]
+              ?: [self linkAtRadius:12.5f aroundPoint:point truncationTokenLink:truncationTokenLink]
+              ?: [self linkAtRadius:15.f aroundPoint:point truncationTokenLink:truncationTokenLink];
     }
     
     return result;
 }
 
-- (TTTAttributedLabelLink *)linkAtRadius:(const CGFloat)radius aroundPoint:(CGPoint)point {
+- (TTTAttributedLabelLink *)linkAtRadius:(const CGFloat)radius
+                             aroundPoint:(CGPoint)point
+                     truncationTokenLink:(TTTAttributedLabelLink *)truncationTokenLink
+{
     const CGFloat diagonal = CGFloat_sqrt(2 * radius * radius);
     const CGPoint deltas[] = {
         CGPointMake(0, -radius), CGPointMake(0, radius), // Above and below
@@ -742,16 +751,22 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
     
     for (NSInteger i = 0; i < count && link.result == nil; i ++) {
         CGPoint currentPoint = CGPointMake(point.x + deltas[i].x, point.y + deltas[i].y);
-        link = [self linkAtCharacterIndex:[self characterIndexAtPoint:currentPoint]];
+        link = [self linkAtCharacterIndex:[self characterIndexAtPoint:currentPoint] truncationTokenLink:truncationTokenLink];
     }
     
     return link;
 }
 
-- (TTTAttributedLabelLink *)linkAtCharacterIndex:(CFIndex)idx {
+- (TTTAttributedLabelLink *)linkAtCharacterIndex:(CFIndex)idx
+                             truncationTokenLink:(TTTAttributedLabelLink *)truncationTokenLink
+{
     // Do not enumerate if the index is outside of the bounds of the text.
     if (!NSLocationInRange((NSUInteger)idx, NSMakeRange(0, self.attributedText.length))) {
         return nil;
+    }
+
+    if (truncationTokenLink && NSLocationInRange((NSUInteger)idx, truncationTokenLink.result.range)) {
+        return truncationTokenLink;
     }
     
     NSEnumerator *enumerator = [self.linkModels reverseObjectEnumerator];
@@ -838,6 +853,123 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
     return idx;
 }
 
+- (BOOL)truncatesLastLine {
+    return self.lineBreakMode == TTTLineBreakByTruncatingHead || self.lineBreakMode == TTTLineBreakByTruncatingMiddle || self.lineBreakMode == TTTLineBreakByTruncatingTail;
+}
+
+- (NSAttributedString *)attributedTruncationTokenForAttributedString:(NSAttributedString *)attributedString
+                                                       lastLineRange:(CFRange)lastLineRange
+                                                       numberOfLines:(NSInteger)numberOfLines
+                                                      truncationType:(CTLineTruncationType *)outTruncationType
+{
+    // Get correct truncationType and attribute position
+    CTLineTruncationType truncationType;
+    CFIndex truncationAttributePosition = lastLineRange.location;
+    TTTLineBreakMode lineBreakMode = self.lineBreakMode;
+
+    // Multiple lines, only use UILineBreakModeTailTruncation
+    if (numberOfLines != 1) {
+        lineBreakMode = TTTLineBreakByTruncatingTail;
+    }
+
+    switch (lineBreakMode) {
+        case TTTLineBreakByTruncatingHead:
+            truncationType = kCTLineTruncationStart;
+            break;
+        case TTTLineBreakByTruncatingMiddle:
+            truncationType = kCTLineTruncationMiddle;
+            truncationAttributePosition += (lastLineRange.length / 2);
+            break;
+        case TTTLineBreakByTruncatingTail:
+        default:
+            truncationType = kCTLineTruncationEnd;
+            truncationAttributePosition += (lastLineRange.length - 1);
+            break;
+    }
+
+    if (outTruncationType) {
+        *outTruncationType = truncationType;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    NSAttributedString *attributedTruncationString = self.attributedTruncationToken;
+    if (!attributedTruncationString) {
+        NSString *truncationTokenString = self.truncationTokenString;
+        if (!truncationTokenString) {
+            truncationTokenString = @"\u2026"; // Unicode Character 'HORIZONTAL ELLIPSIS' (U+2026)
+        }
+
+        NSDictionary *truncationTokenStringAttributes = self.truncationTokenStringAttributes;
+        if (!truncationTokenStringAttributes) {
+            truncationTokenStringAttributes = [attributedString attributesAtIndex:(NSUInteger)truncationAttributePosition effectiveRange:NULL];
+        }
+
+        attributedTruncationString = [[NSAttributedString alloc] initWithString:truncationTokenString attributes:truncationTokenStringAttributes];
+    }
+#pragma clang diagnostic pop
+
+    return attributedTruncationString;
+}
+
+// The truncation token link depends on layout, so it is resolved from the current layout when links are
+// looked up rather than registered while drawing. The same instance is returned while its range and URL
+// are unchanged, so that touch tracking can compare it by identity.
+- (TTTAttributedLabelLink *)currentTruncationTokenLink {
+    TTTAttributedLabelLink *link = nil;
+    NSAttributedString *attributedString = self.renderedAttributedText;
+    CFRange textRange = CFRangeMake(0, (CFIndex)[self.attributedText length]);
+
+    if ([self truncatesLastLine] && textRange.length > 0 && attributedString.length > 0) {
+        CGRect textRect = [self textRectForBounds:self.bounds limitedToNumberOfLines:self.numberOfLines];
+        CGMutablePathRef path = CGPathCreateMutable();
+        CGPathAddRect(path, NULL, textRect);
+        CTFrameRef frame = CTFramesetterCreateFrame([self framesetter], textRange, path, NULL);
+        CGPathRelease(path);
+
+        if (frame) {
+            CFArrayRef lines = CTFrameGetLines(frame);
+            NSInteger numberOfLines = self.numberOfLines > 0 ? MIN(self.numberOfLines, CFArrayGetCount(lines)) : CFArrayGetCount(lines);
+
+            if (numberOfLines > 0) {
+                CFRange lastLineRange = CTLineGetStringRange(CFArrayGetValueAtIndex(lines, numberOfLines - 1));
+
+                if (!(lastLineRange.length == 0 && lastLineRange.location == 0) && lastLineRange.location + lastLineRange.length < textRange.location + textRange.length) {
+                    NSAttributedString *attributedTruncationString = [self attributedTruncationTokenForAttributedString:attributedString
+                                                                                                          lastLineRange:lastLineRange
+                                                                                                          numberOfLines:numberOfLines
+                                                                                                         truncationType:NULL];
+                    id value = attributedTruncationString.length > 0 ? [attributedTruncationString attribute:NSLinkAttributeName atIndex:0 effectiveRange:NULL] : nil;
+                    NSURL *URL = [value isKindOfClass:[NSString class]] ? [NSURL URLWithString:value] : value;
+
+                    if ([URL isKindOfClass:[NSURL class]]) {
+                        NSUInteger lastLineEnd = (NSUInteger)(lastLineRange.location + lastLineRange.length);
+                        NSUInteger tokenLength = MIN(attributedTruncationString.length, lastLineEnd);
+                        NSRange tokenLinkRange = NSMakeRange(lastLineEnd - tokenLength, tokenLength);
+
+                        TTTAttributedLabelLink *existingLink = self.truncationTokenLink;
+                        if (existingLink && NSEqualRanges(existingLink.result.range, tokenLinkRange) && [existingLink.result.URL isEqual:URL]) {
+                            link = existingLink;
+                        } else {
+                            NSDictionary *attributes = self.linkAttributes;
+                            link = [[TTTAttributedLabelLink alloc] initWithAttributes:attributes
+                                                                     activeAttributes:attributes ? self.activeLinkAttributes : nil
+                                                                   inactiveAttributes:attributes ? self.inactiveLinkAttributes : nil
+                                                                   textCheckingResult:[NSTextCheckingResult linkCheckingResultWithRange:tokenLinkRange URL:URL]];
+                        }
+                    }
+                }
+            }
+
+            CFRelease(frame);
+        }
+    }
+
+    self.truncationTokenLink = link;
+
+    return link;
+}
+
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 70000
 - (CGRect)boundingRectForCharacterRange:(NSRange)range {
     NSMutableAttributedString *mutableAttributedString = [self.attributedText mutableCopy];
@@ -872,7 +1004,7 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
 
     CFArrayRef lines = CTFrameGetLines(frame);
     NSInteger numberOfLines = self.numberOfLines > 0 ? MIN(self.numberOfLines, CFArrayGetCount(lines)) : CFArrayGetCount(lines);
-    BOOL truncateLastLine = (self.lineBreakMode == TTTLineBreakByTruncatingHead || self.lineBreakMode == TTTLineBreakByTruncatingMiddle || self.lineBreakMode == TTTLineBreakByTruncatingTail);
+    BOOL truncateLastLine = [self truncatesLastLine];
 
     CGPoint lineOrigins[numberOfLines];
     CTFrameGetLineOrigins(frame, CFRangeMake(0, numberOfLines), lineOrigins);
@@ -893,49 +1025,12 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
             CFRange lastLineRange = CTLineGetStringRange(line);
 
             if (!(lastLineRange.length == 0 && lastLineRange.location == 0) && lastLineRange.location + lastLineRange.length < textRange.location + textRange.length) {
-                // Get correct truncationType and attribute position
                 CTLineTruncationType truncationType;
-                CFIndex truncationAttributePosition = lastLineRange.location;
-                TTTLineBreakMode lineBreakMode = self.lineBreakMode;
-
-                // Multiple lines, only use UILineBreakModeTailTruncation
-                if (numberOfLines != 1) {
-                    lineBreakMode = TTTLineBreakByTruncatingTail;
-                }
-
-                switch (lineBreakMode) {
-                    case TTTLineBreakByTruncatingHead:
-                        truncationType = kCTLineTruncationStart;
-                        break;
-                    case TTTLineBreakByTruncatingMiddle:
-                        truncationType = kCTLineTruncationMiddle;
-                        truncationAttributePosition += (lastLineRange.length / 2);
-                        break;
-                    case TTTLineBreakByTruncatingTail:
-                    default:
-                        truncationType = kCTLineTruncationEnd;
-                        truncationAttributePosition += (lastLineRange.length - 1);
-                        break;
-                }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-                NSAttributedString *attributedTruncationString = self.attributedTruncationToken;
-                if (!attributedTruncationString) {
-                    NSString *truncationTokenString = self.truncationTokenString;
-                    if (!truncationTokenString) {
-                        truncationTokenString = @"\u2026"; // Unicode Character 'HORIZONTAL ELLIPSIS' (U+2026)
-                    }
-                    
-                    NSDictionary *truncationTokenStringAttributes = self.truncationTokenStringAttributes;
-                    if (!truncationTokenStringAttributes) {
-                        truncationTokenStringAttributes = [attributedString attributesAtIndex:(NSUInteger)truncationAttributePosition effectiveRange:NULL];
-                    }
-                    
-                    attributedTruncationString = [[NSAttributedString alloc] initWithString:truncationTokenString attributes:truncationTokenStringAttributes];
-                }
+                NSAttributedString *attributedTruncationString = [self attributedTruncationTokenForAttributedString:attributedString
+                                                                                                      lastLineRange:lastLineRange
+                                                                                                      numberOfLines:numberOfLines
+                                                                                                     truncationType:&truncationType];
                 CTLineRef truncationToken = CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)attributedTruncationString);
-#pragma clang diagnostic pop
 
                 // Append truncationToken to the string
                 // because if string isn't too long, CT won't add the truncationToken on its own.
@@ -966,14 +1061,6 @@ static inline CGSize CTFramesetterSuggestFrameSizeForAttributedStringWithConstra
                 CGContextSetTextPosition(c, penOffset, lineOrigin.y - descent - self.font.descender);
 
                 CTLineDraw(truncatedLine, c);
-                
-                NSRange linkRange;
-                if ([attributedTruncationString attribute:NSLinkAttributeName atIndex:0 effectiveRange:&linkRange]) {
-                    NSRange tokenRange = [truncationString.string rangeOfString:attributedTruncationString.string];
-                    NSRange tokenLinkRange = NSMakeRange((NSUInteger)(lastLineRange.location+lastLineRange.length)-tokenRange.length, (NSUInteger)tokenRange.length);
-                    
-                    [self addLinkToURL:[attributedTruncationString attribute:NSLinkAttributeName atIndex:0 effectiveRange:&linkRange] withRange:tokenLinkRange];
-                }
 
                 CFRelease(truncatedLine);
                 CFRelease(truncationLine);
@@ -1436,7 +1523,13 @@ afterInheritingLabelAttributesAndConfiguringWithBlock:(NSMutableAttributedString
         @synchronized(self) {
             NSMutableArray *mutableAccessibilityItems = [NSMutableArray array];
 
-            for (TTTAttributedLabelLink *link in self.linkModels) {
+            NSArray *accessibleLinks = self.linkModels;
+            TTTAttributedLabelLink *truncationTokenLink = [self currentTruncationTokenLink];
+            if (truncationTokenLink) {
+                accessibleLinks = [accessibleLinks arrayByAddingObject:truncationTokenLink];
+            }
+
+            for (TTTAttributedLabelLink *link in accessibleLinks) {
                 
                 if (link.result.range.location == NSNotFound) {
                     continue;
