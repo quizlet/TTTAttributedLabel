@@ -9,27 +9,11 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: List schemes and simulators
-        run: |
-          xcodebuild -list
-          xcrun simctl list devices available
       - name: Run linked truncation token tests
         run: |
           set -o pipefail
-          DEVICE=$(python3 - <<'PY'
-          import subprocess
-          text = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available"], text=True)
-          for line in text.splitlines():
-              stripped = line.strip()
-              if stripped.startswith("iPhone"):
-                  name = stripped.split(" (")[0]
-                  print(name)
-                  break
-          PY
-          )
-          echo "Using simulator: $DEVICE"
           xcodebuild test \
-            -scheme TruncationTokenCrash \
-            -destination "platform=iOS Simulator,name=${DEVICE}" \
+            -scheme TruncationTokenCrash-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' \
             -only-testing:TruncationTokenCrashTests \
             CODE_SIGNING_ALLOWED=NO
