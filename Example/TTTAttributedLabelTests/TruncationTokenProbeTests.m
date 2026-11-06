@@ -230,6 +230,84 @@
     XCTAssertTrue(NSMaxRange(token.result.range) <= label.attributedText.length);
 }
 
+- (unsigned long long)renderHash:(UIView *)view {
+    CGSize size = view.bounds.size;
+    size_t width = (size_t)ceil(size.width), height = (size_t)ceil(size.height);
+    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+    CGContextRef ctx = CGBitmapContextCreate(NULL, width, height, 8, width * 4, space, (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
+    CGColorSpaceRelease(space);
+    CGContextTranslateCTM(ctx, 0, (CGFloat)height);
+    CGContextScaleCTM(ctx, 1, -1);
+    [view.layer renderInContext:ctx];
+    const unsigned char *bytes = CGBitmapContextGetData(ctx);
+    unsigned long long hash = 1469598103934665603ULL;
+    for (size_t i = 0; i < width * height * 4; i++) {
+        hash = (hash ^ bytes[i]) * 1099511628211ULL;
+    }
+    CGContextRelease(ctx);
+    return hash;
+}
+
+- (TTTAttributedLabel *)snapshotLabel {
+    TTTAttributedLabel *label = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(0, 0, 300, 100)];
+    label.numberOfLines = 0;
+    return label;
+}
+
+- (NSAttributedString *)snapshotText {
+    return [[NSAttributedString alloc] initWithString:@"Pallando, Merlyn, and Melisandre were walking one day..."
+                                           attributes:@{NSForegroundColorAttributeName : [UIColor redColor],
+                                                        NSFontAttributeName : [UIFont boldSystemFontOfSize:16.f]}];
+}
+
+- (void)testProbeRenderHashesOfExistingSnapshotConfigurations {
+    NSArray *tokens = @[
+        [[NSAttributedString alloc] initWithString:@"[DOTDOTDOT]" attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:12], NSForegroundColorAttributeName : [UIColor blueColor]}],
+        [[NSAttributedString alloc] initWithString:@"[more]" attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:12], NSForegroundColorAttributeName : [UIColor blueColor], NSLinkAttributeName : [NSURL URLWithString:@"http://ytmnd.com"]}],
+        [[NSAttributedString alloc] initWithString:@"[more]" attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:12], NSForegroundColorAttributeName : [UIColor blueColor], NSLinkAttributeName : [NSURL URLWithString:@"http://ytmnd.com"], NSUnderlineStyleAttributeName : @YES}],
+        [[NSAttributedString alloc] initWithString:@"[more]" attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:12], NSForegroundColorAttributeName : [UIColor blueColor], NSLinkAttributeName : [NSURL URLWithString:@"http://ytmnd.com"], NSUnderlineStyleAttributeName : @YES, NSUnderlineColorAttributeName : [UIColor redColor]}],
+    ];
+    NSArray *names = @[@"testAttributedTruncationToken", @"testAttributedTruncationTokenLinks", @"testAttributedTruncationTokenLinksUnderline", @"testAttributedTruncationTokenLinksUnderlineColor"];
+    for (NSUInteger i = 0; i < tokens.count; i++) {
+        TTTAttributedLabel *label = [self snapshotLabel];
+        label.attributedTruncationToken = tokens[i];
+        label.text = [self snapshotText];
+        [label setFrame:CGRectMake(0, 0, 120, 60)];
+        NSLog(@"PROBE render %@ %016llx", names[i], [self renderHash:label]);
+    }
+
+    TTTAttributedLabel *adjusts = [self snapshotLabel];
+    adjusts.adjustsFontSizeToFitWidth = YES;
+    adjusts.minimumScaleFactor = 0.25f;
+    adjusts.numberOfLines = 1;
+    adjusts.text = [self snapshotText];
+    [adjusts setFrame:CGRectMake(0, 0, 150, 50)];
+    NSLog(@"PROBE render testAdjustsFontSizeToFitWidth %016llx", [self renderHash:adjusts]);
+
+    TTTAttributedLabel *lines = [self snapshotLabel];
+    lines.numberOfLines = 1;
+    lines.text = [self snapshotText];
+    NSLog(@"PROBE render testNumberOfLines %016llx", [self renderHash:lines]);
+
+    TTTAttributedLabel *sized = [self snapshotLabel];
+    sized.numberOfLines = 3;
+    sized.attributedTruncationToken = [[NSAttributedString alloc] initWithString:@"[more]" attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:14], NSForegroundColorAttributeName : [UIColor greenColor]}];
+    sized.text = [[NSAttributedString alloc] initWithString:@"Test\nString\nWith\nLines" attributes:@{NSFontAttributeName : [UIFont boldSystemFontOfSize:15], NSForegroundColorAttributeName : [UIColor redColor]}];
+    [sized sizeToFit];
+    NSLog(@"PROBE render testSizeToFitWithTruncationToken %016llx", [self renderHash:sized]);
+
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 375, 667)];
+    NSString *text = @"The NSString class declares the programmatic interface for an object that manages immutable strings. An immutable string is a text string that is defined when it is created and subsequently cannot be changed. NSString is implemented to represent an array of Unicode characters, in other words, a text string.";
+    for (NSUInteger i = 0; i < 10; i++) {
+        TTTAttributedLabel *l = [[TTTAttributedLabel alloc] initWithFrame:CGRectMake(10, 10 * (i + 1) + (i * 50) + 10, container.bounds.size.width - (i + 1) * 20, 50)];
+        l.numberOfLines = 2;
+        l.attributedTruncationToken = [[NSAttributedString alloc] initWithString:@"...more" attributes:@{NSForegroundColorAttributeName : [UIColor blueColor], NSLinkAttributeName : [NSURL URLWithString:@"http://more.com"]}];
+        l.text = text;
+        [container addSubview:l];
+    }
+    NSLog(@"PROBE render testLabelTruncationVaryingWidthSizing %016llx", [self renderHash:container]);
+}
+
 - (void)testProbeAccessibilityIncludesTokenLinkOnce {
     TTTProbeLabel *label = [self labelWithBody:[self body:500] lines:1 mode:NSLineBreakByTruncatingTail];
     label.attributedTruncationToken = [self token:[NSURL URLWithString:@"https://example.test/more"]];
