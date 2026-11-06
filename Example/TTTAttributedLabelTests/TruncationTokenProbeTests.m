@@ -8,6 +8,17 @@
 #import <XCTest/XCTest.h>
 #import <TTTAttributedLabel.h>
 #import <objc/message.h>
+#import <KIF.h>
+
+@interface TTTProbeDelegate : NSObject <TTTAttributedLabelDelegate>
+@property (nonatomic, strong) NSURL *selectedURL;
+@end
+
+@implementation TTTProbeDelegate
+- (void)attributedLabel:(__unused TTTAttributedLabel *)label didSelectLinkWithURL:(NSURL *)url {
+    self.selectedURL = url;
+}
+@end
 
 @interface TTTProbeLabel : TTTAttributedLabel
 @property (nonatomic, assign) BOOL counting;
@@ -142,23 +153,55 @@
     XCTAssertEqual(label.needsDisplayCount, (NSUInteger)0);
 }
 
+- (BOOL)findTokenPoint:(CGPoint *)outPoint inLabel:(TTTAttributedLabel *)label {
+    for (CGFloat y = 1.f; y < label.bounds.size.height; y += 1.f) {
+        for (CGFloat x = label.bounds.size.width - 1.f; x > 0.f; x -= 1.f) {
+            if ([label linkAtPoint:CGPointMake(x, y)]) {
+                *outPoint = CGPointMake(x, y);
+                return YES;
+            }
+        }
+    }
+    return NO;
+}
+
 - (void)testProbeTokenLinkResolvesAtTappedTokenAndIsStable {
     TTTProbeLabel *label = [self labelWithBody:[self body:500] lines:1 mode:NSLineBreakByTruncatingTail];
     NSURL *url = [NSURL URLWithString:@"https://example.test/more"];
     label.attributedTruncationToken = [self token:url];
     [self draw:label];
 
-    CGRect textRect = [label textRectForBounds:label.bounds limitedToNumberOfLines:label.numberOfLines];
-    CGPoint tokenPoint = CGPointMake(CGRectGetMaxX(textRect) - 3.f, CGRectGetMidY(textRect));
+    CGPoint tokenPoint = CGPointZero;
+    XCTAssertTrue([self findTokenPoint:&tokenPoint inLabel:label]);
     TTTAttributedLabelLink *first = [label linkAtPoint:tokenPoint];
     TTTAttributedLabelLink *second = [label linkAtPoint:tokenPoint];
+    NSLog(@"PROBE token point %@ range %@", NSStringFromCGPoint(tokenPoint), NSStringFromRange(first.result.range));
     XCTAssertNotNil(first);
     XCTAssertTrue(first == second);
     XCTAssertEqualObjects(first.result.URL, url);
     XCTAssertEqual(first.result.range.length, (NSUInteger)4);
     XCTAssertTrue(NSMaxRange(first.result.range) <= label.attributedText.length);
     XCTAssertTrue([label containslinkAtPoint:tokenPoint]);
-    XCTAssertFalse([label containslinkAtPoint:CGPointMake(CGRectGetMinX(textRect) + 3.f, CGRectGetMidY(textRect))]);
+    XCTAssertFalse([label containslinkAtPoint:CGPointMake(3.f, tokenPoint.y)]);
+    XCTAssertEqual(label.links.count, (NSUInteger)0);
+}
+
+- (void)testProbeTappingTokenCallsDelegateWithTokenURL {
+    TTTProbeLabel *label = [self labelWithBody:[self body:500] lines:1 mode:NSLineBreakByTruncatingTail];
+    NSURL *url = [NSURL URLWithString:@"https://example.test/more"];
+    label.attributedTruncationToken = [self token:url];
+    TTTProbeDelegate *delegate = [TTTProbeDelegate new];
+    label.delegate = delegate;
+
+    CGPoint tokenPoint = CGPointZero;
+    XCTAssertTrue([self findTokenPoint:&tokenPoint inLabel:label]);
+
+    UIWindow *window = [[UIApplication sharedApplication].windows lastObject];
+    [window addSubview:label];
+    [label tapAtPoint:tokenPoint];
+    [label removeFromSuperview];
+
+    XCTAssertEqualObjects(delegate.selectedURL, url);
     XCTAssertEqual(label.links.count, (NSUInteger)0);
 }
 
