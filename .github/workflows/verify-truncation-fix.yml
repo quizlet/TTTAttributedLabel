@@ -50,11 +50,13 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
+          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d, reverse=True) if "iOS" in k for x in d[k] if x["name"].startswith("iPhone")))')
+          echo "Using simulator $DEVICE_ID"
           TEST_RUNNER_FB_REFERENCE_IMAGE_DIR="$PWD/Example/TTTAttributedLabelTests/ReferenceImages" \
           xcodebuild test \
             -workspace Example/Espressos.xcworkspace \
             -scheme Espressos \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "id=$DEVICE_ID" \
             -only-testing:TTTAttributedLabelTests/TTTAttributedLabelTests \
             IPHONEOS_DEPLOYMENT_TARGET=12.0 \
             DEAD_CODE_STRIPPING=NO \
